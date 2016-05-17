@@ -1,0 +1,59 @@
+module Compiler where
+
+import Control.Applicative ((<$>),(*>),(<*),(<*>),pure)
+import VM ( Instruction )
+import Text.Parsec
+import Text.Parsec.String
+
+data Term v =
+  TVar v |
+  TFun v (Term v) |
+  TApply (Term v) (Term v) |
+  TNumber Int |
+  TPlus (Term v) (Term v) | TSub (Term v) (Term v) | 
+  TMult (Term v) (Term v) | TDiv (Term v) (Term v) |
+  TIf (Term v) (Term v) (Term v) |
+  TFixfun v v (Term v) |
+  TLet v (Term v) (Term v)
+  deriving (Show)
+
+type NamedTerm = Term Char
+
+term :: Parser NamedTerm
+term = 
+    (char '(' *> spaces *> term <* spaces <* char ')')
+  <|>
+    TLet <$> (string "let" *> spaces *> letter <* spaces <* string "=") 
+    <*> (spaces *> term <* spaces) 
+    <*> (string "in" *> spaces *> term)
+  <|>
+    TFun <$> (string "fun" *> spaces *> letter <* spaces <* string "->" <* spaces)
+    <*> term
+  <|>
+    TFixfun <$> (string "fixfun" *> spaces *> letter <* spaces) 
+    <*> (letter <* string "->" <* spaces)
+    <*> term
+  <|>
+    TIf <$> (string "ifz" *> term <* spaces) 
+        <*> (string "then" *> term <* spaces)
+        <*> (string "else" *> term)
+  <|>
+    TPlus <$> (term <* spaces) <*> (char '+' *> spaces *> term)
+  <|>
+    TSub <$> (term <* spaces) <*> (char '-' *> spaces *> term)
+  <|>
+    TMult <$> (term <* spaces) <*> (char '*' *> spaces *> term)
+  <|>
+    TDiv <$> (term <* spaces) <*> (char '/' *> spaces *> term)
+  <|>
+    try (TApply <$> (term <* spaces) <*> term
+  <|>
+    (TNumber . read) <$> many1 digit
+  <|>
+    TVar <$> letter
+
+
+parsePCF program = parse term "PCF" program
+
+compile :: String -> Maybe [Instruction]
+compile = undefined
